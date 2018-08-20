@@ -1,0 +1,85 @@
+version: '2'
+
+services:
+  web-centos6:
+    build: centos6-web
+    command: /usr/sbin/sshd -D
+    tty: true
+    extra_hosts:
+      - "ansible-server:192.168.88.5"
+    environment:
+      TZ: "Europe/Paris"
+    networks:
+      centreon:
+        ipv4_address: 192.168.88.10
+
+  web-centos7:
+    build: centos7-web
+    command: /usr/sbin/init
+    tty: true
+    extra_hosts:
+      - "ansible-server:192.168.88.5"
+    environment:
+      TZ: "Europe/Paris"
+    networks:
+      centreon:
+        ipv4_address: 192.168.88.20
+
+  poller-centos6:
+    build: centos6-poller
+    command: /usr/sbin/sshd -D
+    tty: true
+    extra_hosts:
+      - "ansible-server:192.168.88.5"
+    environment:
+      TZ: "Europe/Paris"
+    networks:
+      centreon:
+        ipv4_address: 192.168.88.15
+
+  poller-centos7:
+    build: centos7-poller
+    command: /usr/sbin/init
+    tty: true
+    extra_hosts:
+      - "ansible-server:192.168.88.5"
+    environment:
+      TZ: "Europe/Paris"
+    networks:
+      centreon:
+        ipv4_address: 192.168.88.25
+
+  ansible-server:
+    build: centos7-ansible
+    command: |
+      bash -c 'bash -s <<EOF
+      cd /ansible/centreon
+      ansible-playbook -i hosts.example deploy.yml
+      EOF'
+    tty: true
+    depends_on:
+      - web-centos6
+      - web-centos7
+      - poller-centos6
+      - poller-centos7
+    extra_hosts:
+      - "centos6-web:192.168.88.10"
+      - "centos6-poller:192.168.88.15"
+      - "centos7-web:192.168.88.20"
+      - "centos7-poller:192.168.88.25"
+    environment:
+      TZ: "Europe/Paris"
+    volumes:
+      - ./centreon-ansible:/ansible/centreon
+    networks:
+      centreon:
+        ipv4_address: 192.168.88.5
+
+networks:
+  centreon:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 192.168.88.0/24
+          gateway: 192.168.88.1
